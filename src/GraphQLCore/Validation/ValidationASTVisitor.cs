@@ -138,7 +138,7 @@
             return null;
         }
 
-        private GraphQLFieldInfo GetField(GraphQLBaseType type, string fieldName)
+        protected GraphQLFieldInfo GetField(GraphQLBaseType type, string fieldName)
         {
             if (this.IsQueryRootType(type))
             {

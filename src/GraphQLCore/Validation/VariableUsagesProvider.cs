@@ -8,12 +8,82 @@
     {
         private IDictionary<string, GraphQLFragmentDefinition> fragments;
         private List<VariableUsage> variableUsages;
+        private Stack<GraphQLBaseType> inputTypeStack;
 
         private VariableUsagesProvider(IDictionary<string, GraphQLFragmentDefinition> fragments, IGraphQLSchema schema)
             : base(schema)
         {
             this.variableUsages = new List<VariableUsage>();
             this.fragments = fragments;
+            this.inputTypeStack = new Stack<GraphQLBaseType>();
+        }
+
+        public override GraphQLListValue BeginVisitListValue(GraphQLListValue node)
+        {
+            var lastType = this.GetLastInputType();
+
+            if (lastType is GraphQLList)
+            {
+                var type = ((GraphQLList)lastType).MemberType;
+                this.inputTypeStack.Push(type);
+
+                node = base.BeginVisitListValue(node);
+                this.inputTypeStack.Pop();
+
+                return node;
+            }
+
+            return base.BeginVisitListValue(node);
+        }
+
+        public override GraphQLObjectField BeginVisitObjectField(GraphQLObjectField node)
+        {
+            var field = (this.GetLastField()
+            ?.GetGraphQLType(this.SchemaRepository) as GraphQLComplexType)
+            ?.GetFieldInfo(node.Name.Value);
+
+            if (field != null)
+            {
+                var type = this.SchemaRepository.GetSchemaInputTypeFor(field.SystemType);
+                this.inputTypeStack.Push(type);
+
+                node = base.BeginVisitObjectField(node);
+                this.inputTypeStack.Pop();
+
+                return node;
+            }
+
+            return base.BeginVisitObjectField(node);
+        }
+
+        public override GraphQLArgument BeginVisitArgument(GraphQLArgument argument)
+        {
+            if (this.GetLastField().Arguments.ContainsKey(argument.Name.Value))
+            {
+                var type = this.GetLastField().Arguments[argument.Name.Value].GetGraphQLType(this.SchemaRepository);
+                this.inputTypeStack.Push(type);
+
+                argument = base.BeginVisitArgument(argument);
+                this.inputTypeStack.Pop();
+
+                return argument;
+            }
+
+            return base.BeginVisitArgument(argument);
+        }
+
+        public GraphQLBaseType GetLastInputType()
+        {
+            if (this.inputTypeStack.Count > 0)
+            {
+                var type = this.inputTypeStack.Peek();
+
+                return type;
+            }
+
+            var fieldType = this.GetLastType() as GraphQLComplexType;
+
+            return this.SchemaRepository.GetSchemaInputTypeFor(fieldType.SystemType);
         }
 
         public static IEnumerable<VariableUsage> Get(
@@ -39,30 +109,14 @@
             return base.BeginVisitFragmentSpread(fragmentSpread);
         }
 
-        public override GraphQLArgument EndVisitArgument(GraphQLArgument argument)
+        public override GraphQLVariable BeginVisitVariable(GraphQLVariable variable)
         {
-            if (argument.Value is GraphQLVariable)
-            {
-                var usage = this.CreateUsage(argument);
+            var usage = this.CreateUsage(variable);
 
-                if (usage != null)
-                    this.variableUsages.Add(usage);
-            }
+            if (usage != null)
+                this.variableUsages.Add(usage);
 
-            return base.EndVisitArgument(argument);
-        }
-
-        public override GraphQLObjectField BeginVisitObjectField(GraphQLObjectField node)
-        {
-            if (node.Value is GraphQLVariable)
-            {
-                var usage = this.CreateUsage(node);
-
-                if (usage != null)
-                    this.variableUsages.Add(usage);
-            }
-
-            return base.BeginVisitObjectField(node);
+            return base.BeginVisitVariable(variable);
         }
 
         private static IDictionary<string, GraphQLFragmentDefinition> GetFragmentsFromDocument(GraphQLDocument document)
@@ -82,33 +136,14 @@
             return fragments;
         }
 
-        private VariableUsage CreateUsage(GraphQLObjectField node)
+        private VariableUsage CreateUsage(GraphQLVariable variable)
         {
-            var field = (this.GetLastField()
-                ?.GetGraphQLType(this.SchemaRepository) as GraphQLComplexType)
-                ?.GetFieldInfo(node.Name.Value);
-
-            if (field == null)
-                return null;
-
+            var type = this.GetLastInputType();
+           
             return new VariableUsage()
             {
-                ArgumentType = field.GetGraphQLType(this.SchemaRepository),
-                Variable = node.Value as GraphQLVariable
-            };
-        }
-
-        private VariableUsage CreateUsage(GraphQLArgument argument)
-        {
-            var arguments = this.GetLastField().Arguments;
-
-            if (!arguments.ContainsKey(argument.Name.Value))
-                return null;
-
-            return new VariableUsage()
-            {
-                ArgumentType = arguments[argument.Name.Value].GetGraphQLType(this.SchemaRepository),
-                Variable = argument.Value as GraphQLVariable
+                ArgumentType = type,
+                Variable = variable
             };
         }
     }

@@ -4,6 +4,7 @@
     using Exceptions;
     using Language.AST;
     using System;
+    using System.Collections;
     using System.Linq;
     using System.Linq.Expressions;
     using Translation;
@@ -47,18 +48,43 @@
                 if (astField == null)
                     continue;
 
-                object value = this.GetValueFromField(schemaRepository, field.Value, astField);
-
-                if (value == null && astField.Value.Kind == ASTNodeKind.Variable)
-                {
-                    value = schemaRepository.VariableResolver.GetValue((GraphQLVariable)astField.Value);
-                    value = ReflectionUtilities.ChangeValueType(value, field.Value.SystemType);
-                }
+                var value = this.GetField(astField, field.Value, schemaRepository);
 
                 this.AssignValueToObjectField(result, field.Value, value);
             }
 
             return result;
+        }
+
+        private object GetField(GraphQLObjectField astField, GraphQLInputObjectTypeFieldInfo fieldInfo, ISchemaRepository schemaRepository)
+        {
+            object value = this.GetValueFromField(schemaRepository, fieldInfo, astField);
+
+            switch (astField.Value.Kind)
+            {
+                case ASTNodeKind.Variable:
+                    value = schemaRepository.VariableResolver.GetValue((GraphQLVariable)astField.Value);
+                    break;
+                case ASTNodeKind.ListValue:
+                    value = this.GetValueFromListValue(schemaRepository, (GraphQLListValue)astField.Value, fieldInfo, value);
+                    break;
+            }
+
+            return value;
+        }
+
+        private object GetValueFromListValue(ISchemaRepository schemaRepository, GraphQLListValue listValue, GraphQLInputObjectTypeFieldInfo fieldInfo, object value)
+        {
+            var list = (IList)ReflectionUtilities.ChangeToCollection(value, fieldInfo.SystemType);
+            var astValues = listValue.Values.ToArray();
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i] == null && astValues[i].Kind == ASTNodeKind.Variable)
+                    list[i] = schemaRepository.VariableResolver.GetValue((GraphQLVariable)astValues[i]);
+            }
+
+            return list;
         }
 
         private static GraphQLObjectField GetFieldFromAstObjectValue(GraphQLObjectValue objectAstValue, string fieldName)
