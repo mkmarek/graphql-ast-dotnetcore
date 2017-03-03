@@ -279,7 +279,7 @@
             return node;
         }
 
-        private ASTNode BeginVisitListValue(GraphQLListValue node)
+        public virtual GraphQLListValue BeginVisitListValue(GraphQLListValue node)
         {
             foreach (var value in node.Values)
                 this.BeginVisitNode(value);
