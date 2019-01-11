@@ -9,7 +9,7 @@ Library for creating GraphQL servers with .NET core.
 
 ![](images/graphql-dotnetcore.png)
 
-##Code Example
+## Code Example
 ```csharp
 public class Query : GraphQLObjectType
 {
