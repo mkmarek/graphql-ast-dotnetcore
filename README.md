@@ -64,7 +64,7 @@ public class GraphQLController : Controller
 ```
 Interested? Have a look on a better example [here](examples/GraphQLCore.GraphiQLExample)!
 
-##Documentation
+## Documentation
 
 1. Scalar type translation
 2. Nullability
@@ -86,18 +86,18 @@ Interested? Have a look on a better example [here](examples/GraphQLCore.GraphiQL
 9. Validation
 10. Roadmap
 
-##Contributions
+## Contributions
 Wanna contribute? Awesome! Please follow this process to get your feature
 or bugfix in place.
 
-###Fork it
+### Fork it
 ![](images/fork.png)
-###Clone it
+### Clone it
 ```
 git clone https://github.com/<your_username>/graphql-dotnetcore.git
 cd graphql-dotnetcore
 ```
-###Do it
+### Do it
 ```
 git checkout develop
 ...
@@ -111,17 +111,17 @@ git add -A
 git commit -m "Fix the previous fix for awesome feature"
 ...
 ```
-###Squash it
+### Squash it
 ```
 git rebase -i <commit>
 ```
 More info about squashing [http://gitready.com/advanced/2009/02/10/squashing-commits-with-rebase.html](http://gitready.com/advanced/2009/02/10/squashing-commits-with-rebase.html).
 
-###Push it
+### Push it
 ```
 git push
 ```
 
-###Request it
+### Request it
 The final step will be creating a pull request. Refer the github docs
 for more details about that [https://help.github.com/articles/using-pull-requests/](https://help.github.com/articles/using-pull-requests/)
